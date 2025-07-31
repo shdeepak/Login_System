@@ -1,0 +1,273 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.form-container {
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.form-container h2 {
+  margin-bottom: 20px;
+  text-align: center;
+  color: #333;
+}
+
+.input-group {
+  margin-bottom: 15px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+}
+
+input, select, button {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 5px;
+  box-sizing: border-box;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+/* Validation states */
+input.valid {
+  border-color: #28a745;
+  background-color: #f8fff9;
+}
+
+input.invalid {
+  border-color: #dc3545;
+  background-color: #fff8f8;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  border: none;
+  font-weight: bold;
+  margin-top: 10px;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Error and success messages */
+.error-message {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 5px;
+  display: block;
+  min-height: 16px;
+}
+
+.success-message {
+  color: #28a745;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+#message {
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 5px;
+  text-align: center;
+  font-weight: bold;
+  min-height: 20px;
+}
+
+.message-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.message-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.message-info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+/* Password requirements */
+.password-requirements {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 5px;
+  padding: 10px;
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.password-requirements ul {
+  margin: 5px 0;
+  padding-left: 20px;
+}
+
+.password-requirements li {
+  margin: 2px 0;
+  transition: color 0.3s ease;
+}
+
+.requirement-met {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.requirement-unmet {
+  color: #dc3545;
+}
+
+/* Admin dashboard styles */
+.form-container.admin {
+  width: 90vw;
+  max-width: 900px;
+  padding: 30px 40px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+th {
+  background-color: #e9ecef;
+  font-weight: bold;
+}
+
+tr:nth-child(even) {
+  background-color: #f7f7f7;
+}
+
+.logout-btn {
+  background-color: #dc3545 !important;
+  margin-top: 10px;
+}
+
+.logout-btn:hover {
+  background-color: #c82333 !important;
+}
+
+.user-info {
+  background-color: #e9ecef;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.action-buttons button {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* Loading states */
+.loading {
+  position: relative;
+  color: transparent;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #fff;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .form-container {
+    padding: 15px 20px;
+    margin: 10px;
+  }
+  
+  input, select, button {
+    padding: 10px;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+}
+/* CAPTCHA styling */
+.g-recaptcha {
+  margin: 15px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 5px;
+  display: block;
+  min-height: 16px;
+}
+
+/* Responsive CAPTCHA */
+@media (max-width: 480px) {
+  .g-recaptcha {
+    transform: scale(0.77);
+    transform-origin: 0 0;
+  }
+}

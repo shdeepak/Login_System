@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - Secure Authentication</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="form-container">
+    <h2>Create Account</h2>
+    <form id="registerForm" novalidate>
+      <div class="input-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autocomplete="username">
+        <div id="username-error" class="error-message"></div>
+      </div>
+
+      <div class="input-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" required autocomplete="email">
+        <div id="email-error" class="error-message"></div>
+      </div>
+
+      <div class="input-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="new-password">
+        <div id="password-error" class="error-message"></div>
+        <div class="password-requirements">
+          <strong>Password must contain:</strong>
+          <ul>
+            <li id="length" class="requirement-unmet">At least 8 characters</li>
+            <li id="lowercase" class="requirement-unmet">One lowercase letter (a-z)</li>
+            <li id="uppercase" class="requirement-unmet">One uppercase letter (A-Z)</li>
+            <li id="number" class="requirement-unmet">One number (0-9)</li>
+            <li id="special" class="requirement-unmet">One special character (!@#$%^&*)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
+        <div id="confirm-password-error" class="error-message"></div>
+      </div>
+
+      <div class="input-group">
+        <label for="role">Account Type</label>
+        <select id="role" name="role" required>
+          <option value="">Select Account Type</option>
+          <option value="User">Regular User</option>
+          <option value="Admin">Administrator</option>
+        </select>
+        <div id="role-error" class="error-message"></div>
+      </div>
+
+      <button type="submit" id="submitBtn">Create Account</button>
+    </form>
+    
+    <div id="message"></div>
+    
+    <p style="text-align: center; margin-top: 15px;">
+      <a href="login.html">Already have an account? Sign in here</a>
+    </p>
+  </div>
+
+  <script>
+    const ValidationRules = {
+      username: {
+        validate: (value) => {
+          const errors = [];
+          if (!value) errors.push('Username is required');
+          if (value.length < 3) errors.push('Username must be at least 3 characters');
+          if (value.length > 30) errors.push('Username must not exceed 30 characters');
+          if (!/^[a-zA-Z0-9]+$/.test(value)) errors.push('Username can only contain letters and numbers');
+          return errors;
+        }
+      },
+      
+      email: {
+        validate: (value) => {
+          const errors = [];
+          if (!value) errors.push('Email is required');
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (value && !emailRegex.test(value)) errors.push('Please enter a valid email address');
+          return errors;
+        }
+      },
+      
+      password: {
+        validate: (value) => {
+          const errors = [];
+          const requirements = {
+            length: value.length >= 8,
+            lowercase: /[a-z]/.test(value),
+            uppercase: /[A-Z]/.test(value),
+            number: /[0-9]/.test(value),
+            special: /[!@#$%^&*(),.?":{}|<>]/.test(value)
+          };
+          
+          Object.keys(requirements).forEach(req => {
+            const element = document.getElementById(req);
+            if (element) {
+              element.className = requirements[req] ? 'requirement-met' : 'requirement-unmet';
+            }
+          });
+          
+          if (!value) errors.push('Password is required');
+          if (!requirements.length) errors.push('Password must be at least 8 characters');
+          if (!requirements.lowercase) errors.push('Password must contain a lowercase letter');
+          if (!requirements.uppercase) errors.push('Password must contain an uppercase letter');
+          if (!requirements.number) errors.push('Password must contain a number');
+          if (!requirements.special) errors.push('Password must contain a special character');
+          
+          return errors;
+        }
+      },
+      
+      confirmPassword: {
+        validate: (value, formData) => {
+          const errors = [];
+          const password = formData.get('password');
+          if (!value) errors.push('Please confirm your password');
+          if (value && password && value !== password) errors.push('Passwords do not match');
+          return errors;
+        }
+      },
+      
+      role: {
+        validate: (value) => {
+          const errors = [];
+          if (!value) errors.push('Please select an account type');
+          if (value && !['User', 'Admin'].includes(value)) errors.push('Invalid account type');
+          return errors;
+        }
+      }
+    };
+
+    class FormValidator {
+      constructor(formId) {
+        this.form = document.getElementById(formId);
+        this.isSubmitting = false;
+        this.setupEventListeners();
+      }
+
+      setupEventListeners() {
+        Object.keys(ValidationRules).forEach(fieldName => {
+          const field = document.getElementById(fieldName);
+          if (field) {
+            field.addEventListener('input', () => this.validateField(fieldName));
+            field.addEventListener('blur', () => this.validateField(fieldName));
+          }
+        });
+
+        const confirmPasswordField = document.getElementById('confirmPassword');
+        if (confirmPasswordField) {
+          confirmPasswordField.addEventListener('input', () => this.validateField('confirmPassword'));
+          confirmPasswordField.addEventListener('blur', () => this.validateField('confirmPassword'));
+        }
+
+        this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+      }
+
+      validateField(fieldName) {
+        const field = document.getElementById(fieldName);
+        const errorDiv = document.getElementById(`${fieldName.replace(/([A-Z])/g, '-$1').toLowerCase()}-error`);
+        
+        if (!field || !errorDiv) return true;
+
+        const formData = new FormData(this.form);
+        const value = field.value.trim();
+        const rule = ValidationRules[fieldName];
+        
+        if (!rule) return true;
+
+        const errors = rule.validate(value, formData);
+        
+        if (errors.length > 0) {
+          errorDiv.textContent = errors[0];
+          field.classList.remove('valid');
+          field.classList.add('invalid');
+          return false;
+        } else {
+          errorDiv.textContent = '';
+          field.classList.remove('invalid');
+          field.classList.add('valid');
+          return true;
+        }
+      }
+
+      validateAllFields() {
+        const fieldNames = Object.keys(ValidationRules).concat(['confirmPassword']);
+        return fieldNames.every(fieldName => this.validateField(fieldName));
+      }
+
+      showMessage(text, type = 'info') {
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = text;
+        messageDiv.className = `message-${type}`;
+      }
+
+      setLoading(isLoading) {
+        const submitBtn = document.getElementById('submitBtn');
+        if (isLoading) {
+          submitBtn.disabled = true;
+          submitBtn.classList.add('loading');
+          submitBtn.textContent = '';
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('loading');
+          submitBtn.textContent = 'Create Account';
+        }
+      }
+
+      async handleSubmit(e) {
+        e.preventDefault();
+        
+        if (this.isSubmitting) return;
+        
+        if (!this.validateAllFields()) {
+          this.showMessage('Please fix the errors above before submitting', 'error');
+          return;
+        }
+
+        this.isSubmitting = true;
+        this.setLoading(true);
+        
+        const formData = new FormData(this.form);
+        const data = {
+          username: formData.get('username').trim(),
+          email: formData.get('email').trim().toLowerCase(),
+          password: formData.get('password'),
+          role: formData.get('role')
+        };
+
+        try {
+          this.showMessage('Creating your account...', 'info');
+
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(data)
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+            this.showMessage('Account created successfully! Redirecting to login...', 'success');
+            this.form.reset();
+            
+            this.form.querySelectorAll('input').forEach(input => {
+              input.classList.remove('valid', 'invalid');
+            });
+            
+            setTimeout(() => {
+              window.location.href = '/login.html';
+            }, 2000);
+            
+          } else {
+            this.showMessage(result.error || 'Registration failed. Please try again.', 'error');
+          }
+        } catch (error) {
+          console.error('Registration error:', error);
+          this.showMessage('Network error. Please check your connection and try again.', 'error');
+        } finally {
+          this.isSubmitting = false;
+          this.setLoading(false);
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      new FormValidator('registerForm');
+      
+      const token = localStorage.getItem('authToken');
+      const userRole = localStorage.getItem('userRole');
+      
+      if (token && userRole) {
+        if (userRole === 'Admin') {
+          window.location.href = '/admin.html';
+        } else {
+          window.location.href = '/dashboard.html';
+        }
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      document.querySelectorAll('input[type="password"]').forEach(input => {
+        input.value = '';
+      });
+    });
+  </script>
+</body>
+</html>

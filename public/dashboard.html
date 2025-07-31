@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Dashboard - Secure Authentication</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="form-container">
+    <h2>User Dashboard</h2>
+    <div id="user-info" class="user-info"></div>
+    <p>Welcome to your personal dashboard!</p>
+    <p><strong>Note:</strong> You are logged in as a regular user.</p>
+    <p>This is where your user-specific content would appear.</p>
+    <button id="logoutBtn" class="logout-btn">Logout</button>
+  </div>
+
+  <script>
+    function checkTokenExpiration() {
+      const tokenExpiration = localStorage.getItem('tokenExpiration');
+      if (tokenExpiration && new Date().getTime() > parseInt(tokenExpiration)) {
+        alert('Session expired. Please login again.');
+        logout();
+        return false;
+      }
+      return true;
+    }
+
+    function logout() {
+      localStorage.clear();
+      alert('Logged out successfully');
+      window.location.href = '/login.html';
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('authToken');
+      const isLoggedIn = localStorage.getItem('isLoggedIn');
+
+      if (!isLoggedIn || !token) {
+        alert('Please login first.');
+        window.location.href = '/login.html';
+        return;
+      }
+
+      if (!checkTokenExpiration()) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/verify', {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Token invalid');
+        }
+        
+        const data = await response.json();
+        document.getElementById('user-info').innerHTML = 
+          `<strong>Welcome, ${data.user.username}!</strong><br>
+           <em>Role: ${data.user.role}</em><br>
+           <small>You have user-level access</small>`;
+        
+      } catch (error) {
+        console.error('Session verification error:', error);
+        alert('Session expired. Please login again.');
+        logout();
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm('Are you sure you want to logout?')) {
+        logout();
+      }
+    });
+  </script>
+</body>
+</html>

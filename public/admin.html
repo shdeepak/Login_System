@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Secure Authentication</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="form-container admin">
+    <h2>Admin Dashboard</h2>
+    <div id="user-info" class="user-info"></div>
+    
+    <div class="action-buttons">
+      <button id="loadUsersBtn">Load All Users</button>
+      <button id="refreshBtn" style="background-color: #28a745;">Refresh</button>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </div>
+    
+    <div id="status"></div>
+    <div id="user-table-wrapper"></div>
+  </div>
+
+  <script>
+    function logout() {
+      localStorage.clear();
+      alert('Logged out successfully');
+      window.location.href = '/login.html';
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('authToken');
+      const userRole = localStorage.getItem('userRole');
+      const isLoggedIn = localStorage.getItem('isLoggedIn');
+
+      if (!isLoggedIn || !token || userRole !== 'Admin') {
+        alert('Access denied. Admin privileges required.');
+        window.location.href = '/login.html';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/verify', {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Token invalid');
+        }
+        
+        const data = await response.json();
+        document.getElementById('user-info').innerHTML = 
+          `<strong>Welcome, ${data.user.username}!</strong><br>
+           <em>Role: ${data.user.role}</em><br>
+           <small>You have full admin access to manage users</small>`;
+        
+        loadUsers();
+        
+      } catch (error) {
+        console.error('Session verification error:', error);
+        alert('Session expired. Please login again.');
+        logout();
+      }
+    });
+
+    document.getElementById('loadUsersBtn').addEventListener('click', loadUsers);
+    document.getElementById('refreshBtn').addEventListener('click', loadUsers);
+
+    async function loadUsers() {
+      const token = localStorage.getItem('authToken');
+      const status = document.getElementById('status');
+      const userTableWrapper = document.getElementById('user-table-wrapper');
+      
+      try {
+        status.textContent = 'Loading users...';
+        status.style.color = 'blue';
+        
+        const response = await fetch('/api/auth/admin', {
+          method: 'GET',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            alert('Session expired. Please login again.');
+            logout();
+            return;
+          }
+          throw new Error('Failed to load users');
+        }
+
+        const users = await response.json();
+        
+        if (!users.length) {
+          status.textContent = 'No users found.';
+          status.style.color = 'orange';
+          userTableWrapper.innerHTML = '';
+          return;
+        }
+
+        status.textContent = `Successfully loaded ${users.length} user(s).`;
+        status.style.color = 'green';
+
+        let tableHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Failed Attempts</th>
+                <th>Account Status</th>
+                <th>Last Login</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        users.forEach(user => {
+          const lastLogin = user.lastLogin ? 
+            new Date(user.lastLogin).toLocaleDateString() : 'Never';
+          
+          const accountStatus = user.isLocked 
+            ? '<span style="color: red; font-weight: bold;">🔒 LOCKED</span>'
+            : '<span style="color: green;">✅ Active</span>';
+          
+          const unlockButton = user.isLocked 
+            ? `<button onclick="unlockUser('${user.id}', '${user.username}')" style="background-color: #ffc107; color: black; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer;">Unlock</button>`
+            : '';
+
+          tableHTML += `
+            <tr>
+              <td>${user.username}</td>
+              <td>${user.email}</td>
+              <td><strong style="color: ${user.role === 'Admin' ? '#dc3545' : '#007bff'}">${user.role}</strong></td>
+              <td>${user.failedLoginAttempts}</td>
+              <td>${accountStatus}</td>
+              <td>${lastLogin}</td>
+              <td>${unlockButton}</td>
+            </tr>
+          `;
+        });
+
+        tableHTML += '</tbody></table>';
+        userTableWrapper.innerHTML = tableHTML;
+
+      } catch (error) {
+        console.error('Error loading users:', error);
+        status.textContent = 'Error loading users: ' + error.message;
+        status.style.color = 'red';
+        userTableWrapper.innerHTML = '';
+      }
+    }
+
+    // Global function to unlock user accounts
+    window.unlockUser = async function(userId, username) {
+      if (!confirm(`Are you sure you want to unlock the account for ${username}?`)) {
+        return;
+      }
+      
+      const token = localStorage.getItem('authToken');
+      
+      try {
+        const response = await fetch(`/api/auth/admin/unlock/${userId}`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          alert(result.message);
+          loadUsers(); // Refresh the user list
+        } else {
+          alert('Error: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error unlocking user:', error);
+        alert('Failed to unlock user account');
+      }
+    };
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm('Are you sure you want to logout?')) {
+        logout();
+      }
+    });
+  </script>
+</body>
+</html>

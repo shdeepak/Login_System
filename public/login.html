@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In - Secure Authentication</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</head>
+<body>
+  <div class="form-container">
+    <h2>Sign In</h2>
+    <form id="loginForm" novalidate>
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="password" name="password" placeholder="Password" required>
+      
+      <div class="g-recaptcha" data-sitekey="6Le93ZUrAAAAAJ4INHc9T4DcdtVenITKj-EWVRKp"></div>
+      <div id="captcha-error" class="error-message"></div>
+      
+      <button type="submit" id="submitBtn">Sign In</button>
+    </form>
+    
+    <div id="message"></div>
+    <div id="lockout-info" style="display: none; margin-top: 15px; padding: 10px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px;">
+      <strong>Account Locked</strong>
+      <p id="lockout-message"></p>
+      <p>Time remaining: <span id="countdown"></span></p>
+    </div>
+    
+    <div style="text-align: center; margin-top: 15px;">
+      <p><a href="register.html">Don't have an account? Create one here</a></p>
+    </div>
+  </div>
+
+  <script>
+    // Check if user is already logged in
+    window.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('authToken');
+      const userRole = localStorage.getItem('userRole');
+      
+      if (token && userRole) {
+        if (userRole === 'Admin') {
+          window.location.href = '/admin.html';
+        } else {
+          window.location.href = '/dashboard.html';
+        }
+      }
+      
+      checkExistingLockout();
+    });
+
+    function checkExistingLockout() {
+      const lockUntil = localStorage.getItem('lockUntil');
+      if (lockUntil && new Date().getTime() < parseInt(lockUntil)) {
+        showLockoutInfo(parseInt(lockUntil));
+      }
+    }
+
+    function showLockoutInfo(lockUntil) {
+      const lockoutInfo = document.getElementById('lockout-info');
+      const lockoutMessage = document.getElementById('lockout-message');
+      const countdown = document.getElementById('countdown');
+      const submitBtn = document.getElementById('submitBtn');
+      
+      lockoutInfo.style.display = 'block';
+      lockoutMessage.textContent = 'Your account is temporarily locked due to multiple failed login attempts.';
+      submitBtn.disabled = true;
+      
+      const updateCountdown = () => {
+        const now = new Date().getTime();
+        const timeLeft = lockUntil - now;
+        
+        if (timeLeft <= 0) {
+          lockoutInfo.style.display = 'none';
+          submitBtn.disabled = false;
+          localStorage.removeItem('lockUntil');
+          showMessage('Account unlocked. You may now try to login again.', 'success');
+          return;
+        }
+        
+        const minutes = Math.floor(timeLeft / (1000 * 60));
+        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+        countdown.textContent = `${minutes}m ${seconds}s`;
+      };
+      
+      updateCountdown();
+      const interval = setInterval(() => {
+        updateCountdown();
+        if (new Date().getTime() >= lockUntil) {
+          clearInterval(interval);
+        }
+      }, 1000);
+    }
+
+    function validateCaptcha() {
+      const captchaResponse = grecaptcha.getResponse();
+      const errorDiv = document.getElementById('captcha-error');
+
+      if (!captchaResponse) {
+        errorDiv.textContent = 'Please complete the CAPTCHA verification';
+        errorDiv.style.color = 'red';
+        return false;
+      }
+
+      errorDiv.textContent = '';
+      return true;
+    }
+
+    function showMessage(text, type = 'info') {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.style.color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue';
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById('submitBtn');
+      const formData = new FormData(e.target);
+      
+      // Validate CAPTCHA
+      if (!validateCaptcha()) {
+        showMessage('Please complete the CAPTCHA verification', 'error');
+        return;
+      }
+
+      const data = {
+        email: formData.get('email'),
+        password: formData.get('password'),
+        captcha: grecaptcha.getResponse()
+      };
+
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Signing in...';
+        showMessage('Signing in...', 'info');
+
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.token) {
+          // Store authentication data
+          localStorage.setItem('authToken', result.token);
+          localStorage.setItem('userRole', result.userRole);
+          localStorage.setItem('username', result.username);
+          localStorage.setItem('userId', result.userId);
+          localStorage.setItem('isLoggedIn', 'true');
+          localStorage.removeItem('lockUntil'); // Clear any lockout info
+
+          showMessage('Login successful! Redirecting...', 'success');
+
+          // Role-based redirection
+          setTimeout(() => {
+            if (result.userRole === 'Admin') {
+              window.location.href = '/admin.html';
+            } else {
+              window.location.href = '/dashboard.html';
+            }
+          }, 1500);
+
+        } else if (response.status === 423) {
+          // Account locked
+          if (result.lockUntil) {
+            localStorage.setItem('lockUntil', result.lockUntil);
+            showLockoutInfo(new Date(result.lockUntil).getTime());
+          }
+          showMessage(result.error, 'error');
+          grecaptcha.reset();
+        } else {
+          showMessage(result.error || 'Login failed. Please check your credentials.', 'error');
+          grecaptcha.reset();
+          document.querySelector('input[name="password"]').value = '';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        showMessage('Network error. Please check your connection and try again.', 'error');
+        grecaptcha.reset();
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In';
+      }
+    });
+  </script>
+</body>
+</html>
